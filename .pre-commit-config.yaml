@@ -22,11 +22,6 @@ repos:
       - id: markdownlint
         exclude: 'tests/fixtures'
 
-  - repo: https://github.com/populationgenomics/pre-commits
-    rev: "e37928f761f17d54aca5cedf93848b40ec7cff26"
-    hooks:
-      - id: cpg-id-checker
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.14.1
@@ -50,4 +45,4 @@ repos:
             --non-interactive,
             --config-file=./pyproject.toml
           ]
-        additional_dependencies: [types-PyYAML==6.0.4, types-toml]
+        additional_dependencies: []
