@@ -21,7 +21,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "anchorite>=0.1.0",
+    "anchorite>=0.1.1",
     "pydantic-ai-slim[anthropic,bedrock,google,openai]>=1.67.0",
     "pdfplumber>=0.11.9",
     "pypdf>=6.8.0",
