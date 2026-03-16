@@ -20,7 +20,7 @@ from groundmark.markdown import PydanticAIMarkdownProvider
 from groundmark.parse import PdfplumberAnchorProvider
 
 _SPAN_RE = re.compile(
-    r'<span\s+data-bbox="(\d+),(\d+),(\d+),(\d+)"\s+data-page="(\d+)">(.*?)</span>',
+    r'<span\s+data-bbox="(\d+,\d+,\d+,\d+(?:;\d+,\d+,\d+,\d+)*)"\s+data-page="(\d+)">(.*?)</span>',
     re.DOTALL,
 )
 
@@ -88,19 +88,21 @@ def _overlay_bboxes(
         page = reader.pages[anchor.page]
         pw = float(page.mediabox.width)
         ph = float(page.mediabox.height)
-        box = anchor.box
-        _add_highlight(writer, anchor.page, (box.top, box.left, box.bottom, box.right), pw, ph, color=(0.8, 0.9, 1))
+        for box in anchor.boxes:
+            _add_highlight(writer, anchor.page, (box.top, box.left, box.bottom, box.right), pw, ph, color=(0.8, 0.9, 1))
 
     # Red: aligned boxes from annotated Markdown.
     for match in _SPAN_RE.finditer(annotated_markdown):
-        top, left, bottom, right = int(match[1]), int(match[2]), int(match[3]), int(match[4])
-        page_num = int(match[5])
+        bbox_str = match[1]
+        page_num = int(match[2])
         if page_num >= len(reader.pages):
             continue
         page = reader.pages[page_num]
         pw = float(page.mediabox.width)
         ph = float(page.mediabox.height)
-        _add_highlight(writer, page_num, (top, left, bottom, right), pw, ph, color=(1, 0.85, 0.85))
+        for group in bbox_str.split(";"):
+            top, left, bottom, right = (int(v) for v in group.split(","))
+            _add_highlight(writer, page_num, (top, left, bottom, right), pw, ph, color=(1, 0.85, 0.85))
 
     buf = io.BytesIO()
     writer.write(buf)

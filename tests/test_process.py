@@ -30,7 +30,7 @@ async def test_process(
 ) -> None:
     mock_generate_md.return_value = "Hello\n\n"
     mock_generate_anchors.return_value = [
-        Anchor(text="Hello", page=0, box=BBox(100, 100, 200, 200)),
+        Anchor(text="Hello", page=0, boxes=(BBox(100, 100, 200, 200),)),
     ]
 
     result = await process(simple_pdf_bytes, config)

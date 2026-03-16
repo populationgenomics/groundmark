@@ -15,16 +15,16 @@ resolution-markers = [
 
 [[package]]
 name = "anchorite"
-version = "0.1.1"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fsspec" },
     { name = "pypdfium2" },
     { name = "seq-smith" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/3a/80cae16d66d163de4fed0e9bfae5cbe3a35aa47ac611ef6a34fa5a531405/anchorite-0.1.1.tar.gz", hash = "sha256:466681448615b9e7f0fd661838547e6b03ea31b42bb5dfbc80f4f5d5a8e5fed8", size = 4259380, upload-time = "2026-03-14T06:27:57.551Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/a4/2ee292f6cfea1db2f4c31ee591a6083b38cddb491914b4b172cbd59e1f19/anchorite-0.2.0.tar.gz", hash = "sha256:fdf758a4009eeec433d24668f0f69c3d9074fa66f35539357f35b5a0c89b6273", size = 4262583, upload-time = "2026-03-16T05:49:28.507Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/c6/8b6760df7c78ebf3340b98b71dacb779f97cda45f09d504aa8d990262291/anchorite-0.1.1-py3-none-any.whl", hash = "sha256:4b3559f16df20017d636079c9baa5e183fea893027b154e425376e51e2f20ac6", size = 21476, upload-time = "2026-03-14T06:27:55.794Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/bb/07276db60c98febd920210678607585ac849d06e5717532e1f057acee1f3/anchorite-0.2.0-py3-none-any.whl", hash = "sha256:d2e0b6f4314451a8f1848f39699c9b1596bcb39e109b679f7d5f9352d9f2ac57", size = 25450, upload-time = "2026-03-16T05:49:27.121Z" },
 ]
 
 [[package]]
@@ -463,7 +463,7 @@ wheels = [
 
 [[package]]
 name = "groundmark"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "anchorite" },
@@ -483,7 +483,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anchorite", specifier = ">=0.1.1" },
+    { name = "anchorite", specifier = "==0.2.0" },
     { name = "pdfplumber", specifier = ">=0.11.9" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "bedrock", "google", "openai"], specifier = ">=1.67.0" },
     { name = "pypdf", specifier = ">=6.8.0" },
