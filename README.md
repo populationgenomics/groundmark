@@ -1,93 +1,86 @@
-# Gemini OCR
+# groundmark
 
-<img src="https://raw.githubusercontent.com/folded/gemini-ocr/main/docs/source/_static/gemini-ocr.svg" alt="gemini-ocr" width="200">
+<img src="groundmark.webp" alt="groundmark" width="200">
 
-## Traceable Generative Markdown for PDFs
+## Grounded Markdown for PDFs
 
-Gemini OCR is a library designed to convert PDF documents into clean, semantic Markdown while maintaining precise traceability back to the source coordinates. It bridges the gap between the readability of Generative AI (Gemini, Document AI Chunking) and the grounded accuracy of traditional OCR (Google Document AI).
+**groundmark is a thin, batteries-included wrapper around [anchorite](https://github.com/populationgenomics/anchorite).** It provides concrete implementations of anchorite's provider protocols — [Pydantic AI](https://ai.pydantic.dev/) for LLM-based Markdown generation and [pdfplumber](https://github.com/jsvine/pdfplumber) for bounding box extraction — so you can go from PDF bytes to annotated Markdown in a single call. All the heavy lifting (Smith-Waterman alignment, annotation, stripping, quote resolution) lives in anchorite.
 
-## Key Features
-
-- **Generative Markdown**: Uses Google's Gemini Pro or Document AI Layout models to generate human-readable Markdown with proper structure (headers, tables, lists).
-- **Precision Traceability**: Aligns the generated Markdown text back to the original PDF coordinates using detailed OCR data from Google Document AI.
-- **Reverse-Alignment Algorithm**: Implements a robust "reverse-alignment" strategy that starts with the readable text and finds the corresponding bounding boxes, ensuring the Markdown is the ground truth for content.
-- **Confidence Metrics**: (New) Includes coverage metrics to quantify how much of the Markdown content is successfully backed by OCR data.
-- **Pagination Support**: Automatically handles PDF page splitting and merging logic.
+Give it a PDF and a model string, get back Markdown with embedded bounding box coordinates that trace every text span back to its location in the source PDF.
 
 ## Architecture
 
-The library processes documents in two parallel streams:
+The library processes documents in two streams that are then merged:
 
-1. **Semantic Stream**: The PDF is sent to a Generative AI model (e.g., Gemini 2.5 Flash) to produce a clean Markdown representation.
-2. **Positional Stream**: The PDF is sent to Google Document AI to extract raw bounding boxes and text segments.
+1. **Semantic Stream**: The PDF is sent to an LLM (via Pydantic AI) to produce clean Markdown with `<!--page-->` markers between pages.
+2. **Positional Stream**: The PDF is parsed locally by pdfplumber to extract line-level text segments and their bounding boxes.
+3. **Alignment**: Smith-Waterman alignment (via anchorite) maps each parsed line to its position in the Markdown, constrained by page boundaries.
+4. **Annotation**: Bounding box coordinates are injected as HTML span attributes:
 
-These two streams are then merged using a custom alignment engine (`seq_smith` + `bbox_alignment.py`) which:
-
-1. Normalizes both text sources.
-2. Identifies "anchor" comparisons for reliable alignment.
-3. Computes a global alignment using the anchors to constrain the search space.
-4. Identifies significant gaps or mismatches.
-5. Recursively re-aligns mismatched regions until a high-quality alignment is achieved.
-
-**Key Features:**
-
-- **Robust to Cleanliness Issues:** Handles extra headers/footers, watermarks, and noisy OCR artifacts.
-- **Scale-Invariant:** Recursion ensures even small missed sections in large documents are recovered.
+   ```html
+   <span data-bbox="120,45,180,890" data-page="3">The patient presented with</span>
+   ```
 
 ## Quick Start
 
 ```python
 import asyncio
-from pathlib import Path
-from gemini_ocr import gemini_ocr, settings
+import groundmark as gm
 
 async def main():
-    # Configure settings
-    ocr_settings = settings.Settings(
-        project="my-gcp-project",
-        location="us",
-        gcp_project_id="my-gcp-project",
-        layout_processor_id="projects/.../processors/...",
-        ocr_processor_id="projects/.../processors/...",
-        mode=settings.OcrMode.GEMINI,
-    )
+    pdf_bytes = open("document.pdf", "rb").read()
 
-    file_path = Path("path/to/document.pdf")
+    config = gm.Config(model="bedrock:au.anthropic.claude-sonnet-4-6")
 
-    # Process the document
-    result = await gemini_ocr.process_document(ocr_settings, file_path)
-
-    # Access results
+    # PDF -> annotated Markdown (one call)
+    result = await gm.process(pdf_bytes, config)
     print(f"Coverage: {result.coverage_percent:.2%}")
+    print(result.annotated_markdown[:500])
 
-    # Get annotated HTML-compatible Markdown
-    annotated_md = result.annotate()
-    print(annotated_md[:500])  # View first 500 chars
+    # Strip for LLM consumption
+    stripped = gm.strip(result.annotated_markdown)
+    # stripped.plain_text: clean Markdown with spans removed
+    # stripped.validation_map: list of (start, end, Anchor) ranges
+
+    # Resolve verbatim quotes to PDF coordinates
+    resolved = gm.resolve(result.annotated_markdown, ["the patient presented with"])
+    # -> {"the patient presented with": [(page, BBox), ...]}
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+## Debug Visualizer
+
+The included visualizer overlays extracted bounding boxes onto the source PDF, useful for diagnosing alignment issues. Blue highlights show raw extracted boxes from pdfplumber; red highlights show aligned boxes from the annotated Markdown.
+
+```bash
+python -m groundmark.visualize input.pdf output.pdf --model "bedrock:au.anthropic.claude-sonnet-4-6"
+
+# Or with cached Markdown:
+python -m groundmark.visualize input.pdf output.pdf --markdown cached.md
+```
+
+![Visualizer output showing blue (raw) and red (aligned) bounding box overlays](visualize_example.jpg)
+
+*Screenshot from Santoro et al., "Health outcomes and drug utilisation in children with Noonan syndrome: a European cohort study," Orphanet J Rare Dis 20:76 (2025). [doi:10.1186/s13023-025-03594-7](https://doi.org/10.1186/s13023-025-03594-7). CC-BY 4.0.*
+
 ## Configuration
 
-The `gemini_ocr.settings.Settings` class controls the behavior:
+### Timeouts
 
-| Parameter                        | Type      | Description                                                      |
-| :------------------------------- | :-------- | :--------------------------------------------------------------- |
-| `project`                        | `str`     | GCP Project Name                                                 |
-| `location`                       | `str`     | GCP Location (e.g., `us`, `eu`)                                  |
-| `gcp_project_id`                 | `str`     | GCP Project ID (might be same as `project`)                      |
-| `layout_processor_id`            | `str`     | Document AI Processor ID for Layout (if using `DOCUMENTAI` mode) |
-| `ocr_processor_id`               | `str`     | Document AI Processor ID for OCR (required for bounding boxes)   |
-| `mode`                           | `OcrMode` | `GEMINI` (default), `DOCUMENTAI`, or `DOCLING`                   |
-| `gemini_model_name`              | `str`     | Gemini model to use (default: `gemini-2.5-flash`)                |
-| `alignment_uniqueness_threshold` | `float`   | Min score ratio for unique match (default: `0.5`)                |
-| `alignment_min_overlap`          | `float`   | Min overlap fraction for valid match (default: `0.9`)            |
-| `include_bboxes`                 | `bool`    | Whether to perform alignment (default: `True`)                   |
-| `markdown_page_batch_size`       | `int`     | Pages per batch for Markdown generation (default: `10`)          |
-| `ocr_page_batch_size`            | `int`     | Pages per batch for OCR (default: `10`)                          |
-| `num_jobs`                       | `int`     | Max concurrent jobs (default: `10`)                              |
-| `cache_dir`                      | `str`     | Directory to store API response cache (default: `.docai_cache`)  |
+The LLM call for PDF-to-Markdown conversion can take several minutes for large documents, especially with Opus on Bedrock. Timeout defaults by provider:
+
+| Provider | Default | Environment Variable |
+|----------|---------|---------------------|
+| Bedrock (boto3) | 300s | `AWS_READ_TIMEOUT` |
+| Anthropic (httpx) | 600s | — (use `ModelSettings(timeout=...)`) |
+
+For Bedrock with Opus, 300s may not be enough. Set a higher timeout:
+
+```bash
+export AWS_READ_TIMEOUT=600
+```
 
 ## License
 

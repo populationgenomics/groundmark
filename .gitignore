@@ -9,6 +9,15 @@ wheels/
 # Virtual environments
 .venv
 
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Specs (local working docs)
+specs/
+
 # Output and Data
 output.md
 *.pdf
+!tests/data/*.pdf

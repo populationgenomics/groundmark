@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gemini-ocr"
-version = "0.4.0"
+name = "groundmark"
+version = "0.1.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
-description = "Hybrid OCR with gemini and DocumentAI"
+description = "PDF to grounded Markdown with bounding box annotations"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -21,25 +21,24 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "google-genai",
-    "google-cloud-documentai",
-    "pymupdf",
-    "seq-smith>=0.5.1",
-    "python-dotenv>=1.2.1",
-    "fsspec",
-    "gcsfs",
+    "anchorite>=0.1.1",
+    "pydantic-ai-slim[anthropic,bedrock,google,openai]>=1.67.0",
+    "pdfplumber>=0.11.9",
+    "pypdf>=6.8.0",
 ]
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "pytest",
     "pytest-asyncio",
     "ruff>=0.14.6",
+    "typer>=0.24.1",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/folded/gemini-ocr"
-"Bug Tracker" = "https://github.com/folded/gemini-ocr/issues"
+"Homepage" = "https://github.com/populationgenomics/groundmark"
+"Bug Tracker" = "https://github.com/populationgenomics/groundmark/issues"
 
 [tool.ruff]
 line-length = 120
@@ -49,30 +48,28 @@ indent-width = 4
 [tool.ruff.lint]
 select = ["A", "B", "C",  "E", "F", "G", "I", "N", "Q", "S", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "ERA", "EXE", "ICN", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "UP", "YTT"]
 ignore = [
-    "ANN101",  # missing-type-self
+    "C901",    # function complexity — too aggressive for straightforward extraction loops
+    "COM812",  # trailing comma — conflicts with ruff formatter
     "PD011",   # pandas-use-of-dot-values (false positive)
+    "PLR0912", # too many branches — same as C901
+    "PLR0913", # too many arguments — sometimes unavoidable
 ]
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "ERA", "EXE", "FBT", "ICN", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "UP", "YTT"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["gemini-ocr"]
+known-first-party = ["groundmark"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/groundmark/markdown.py" = [
+    "RUF001",  # ambiguous unicode — intentional in LLM prompt about preserving unicode symbols
+]
 "tests/*" = [
+    "ARG001",   # unused function arguments (mock.patch positional injection).
     "S101",     # asserts.
     "S102",     # exec().
     "PLR2004",  # magic value comparisons.
     "SLF001"    # private method access.
 ]
-"docs/*" = [
-    "A001"
-]
-"app.py" = [
-    "ALL" # Ignore all checks for app.py as it contains embedded HTML/JS/CSS in a string.
-]
 
 [tool.mypy]
 python_version = "3.11"
-
-[tool.cibuildwheel]
-build = "cp311-* cp312-* cp313-*"
