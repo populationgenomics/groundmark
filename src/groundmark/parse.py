@@ -60,7 +60,7 @@ class PdfplumberAnchorProvider:
                     anchors.append(
                         Anchor(
                             page=page_num,
-                            box=_normalize(x0, y0, x1, y1, pw, ph),
+                            boxes=(_normalize(x0, y0, x1, y1, pw, ph),),
                             text=text,
                         )
                     )
@@ -68,7 +68,7 @@ class PdfplumberAnchorProvider:
                     anchors.append(
                         Anchor(
                             page=page_num,
-                            box=_normalize(x0, y0, x1, y1, pw, ph),
+                            boxes=(_normalize(x0, y0, x1, y1, pw, ph),),
                             text=text,
                         )
                     )
