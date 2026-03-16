@@ -1,6 +1,6 @@
 # groundmark
 
-<img src="groundmark.webp" alt="groundmark" width="200">
+<img src="https://raw.githubusercontent.com/populationgenomics/groundmark/main/groundmark.webp" alt="groundmark" width="200">
 
 ## Grounded Markdown for PDFs
 
@@ -61,7 +61,7 @@ python -m groundmark.visualize input.pdf output.pdf --model "bedrock:au.anthropi
 python -m groundmark.visualize input.pdf output.pdf --markdown cached.md
 ```
 
-![Visualizer output showing blue (raw) and red (aligned) bounding box overlays](visualize_example.jpg)
+![Visualizer output showing blue (raw) and red (aligned) bounding box overlays](https://raw.githubusercontent.com/populationgenomics/groundmark/main/visualize_example.jpg)
 
 *Screenshot from Santoro et al., "Health outcomes and drug utilisation in children with Noonan syndrome: a European cohort study," Orphanet J Rare Dis 20:76 (2025). [doi:10.1186/s13023-025-03594-7](https://doi.org/10.1186/s13023-025-03594-7). CC-BY 4.0.*
 
