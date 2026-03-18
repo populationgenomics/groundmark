@@ -43,11 +43,7 @@ class PdfplumberAnchorProvider:
 
             for line in lines:
                 x0, x1 = line["x0"], line["x1"]
-                # pdfplumber's top starts at baseline minus font size,
-                # missing the ascender portion above the glyph. Pad upward
-                # by ~30% of line height to approximate full glyph bounds.
-                line_h = line["bottom"] - line["top"]
-                y0 = line["top"] - 0.3 * line_h
+                y0 = line["top"]
                 y1 = line["bottom"]
                 text = unicodedata.normalize("NFKC", line["text"].strip())
                 if not text:
