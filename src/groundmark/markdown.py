@@ -4,9 +4,10 @@ import re
 import unicodedata
 from typing import Final
 
-from anchorite.document import DocumentChunk
 from pydantic_ai import Agent
 from pydantic_ai.messages import BinaryContent
+
+from .document import DocumentChunk
 
 # Apparently, faithfully analyzing a PDF's complicated layout and transcribing
 # it into well-structured Markdown isn't creative enough for Claude's content
@@ -100,5 +101,5 @@ class PydanticAIMarkdownProvider:
         # Strip the line-number prefixes added to bypass Claude's content filter.
         markdown = _LINE_NUM_RE.sub("", result.output)
         # NFKC-normalize so superscript digits, ligatures, etc. match the
-        # NFKC-normalized anchor text from pdfplumber extraction.
+        # normalized character text extracted from PDFs by pypdfium2.
         return unicodedata.normalize("NFKC", markdown)

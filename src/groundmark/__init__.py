@@ -1,6 +1,7 @@
-from anchorite import Anchor, BBox, annotate, resolve, strip
+from groundmark.resolve import DocumentIndex
+from groundmark.types import BBox
 
-from groundmark.markdown import PROMPT
-from groundmark.process import Config, ProcessResult, process
+__all__ = ["BBox", "DocumentIndex"]
 
-__all__ = ["PROMPT", "Anchor", "BBox", "Config", "ProcessResult", "annotate", "process", "resolve", "strip"]
+# Convert functionality requires pydantic-ai (optional dependency).
+# Import explicitly: from groundmark.convert import convert, Config

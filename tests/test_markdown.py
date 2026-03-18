@@ -1,8 +1,10 @@
+"""Tests for the PydanticAIMarkdownProvider."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from anchorite.document import DocumentChunk
 
+from groundmark.document import DocumentChunk
 from groundmark.markdown import PydanticAIMarkdownProvider, _agent
 
 
@@ -50,11 +52,10 @@ async def test_strips_line_numbers(mock_run: AsyncMock, chunk: DocumentChunk) ->
 @patch.object(_agent, "run", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_nfkc_normalizes_output(mock_run: AsyncMock, chunk: DocumentChunk) -> None:
-    # Superscript digits and ligatures should be decomposed to ASCII equivalents
-    # so that alignment matches the NFKC-normalized anchor text from pdfplumber.
-    mock_run.return_value.output = "1|overlap with NS\u00b9\u2070\u00b7\u00b9\u00b9 and ﬁndings"
+    # Superscript digits and ligatures should be decomposed to ASCII equivalents.
+    mock_run.return_value.output = "1|overlap with NS\u00b9\u2070\u00b7\u00b9\u00b9 and \ufb01ndings"
 
     provider = PydanticAIMarkdownProvider(model="anthropic:claude-opus-4-6")
     result = await provider.generate_markdown(chunk)
 
-    assert result == "overlap with NS10·11 and findings"
+    assert result == "overlap with NS10\u00b711 and findings"

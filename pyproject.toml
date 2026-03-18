@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "groundmark"
-version = "0.2.1"
+version = "0.3.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
-description = "PDF to grounded Markdown with bounding box annotations"
+description = "PDF to Markdown conversion and quote-to-bbox resolution"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -21,19 +21,25 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "anchorite==0.2.0",
-    "pydantic-ai-slim[anthropic,bedrock,google,openai]>=1.67.0",
-    "pdfplumber>=0.11.9",
-    "pypdf>=6.8.0",
+    "seq-smith",
+    "pypdfium2",
+    "pypdf",
+    "fsspec",
 ]
+
+[project.optional-dependencies]
+anthropic = ["pydantic-ai-slim[anthropic]"]
+bedrock = ["pydantic-ai-slim[bedrock]"]
+google = ["pydantic-ai-slim[google]"]
+openai = ["pydantic-ai-slim[openai]"]
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.1",
+    "pre-commit",
     "pytest",
     "pytest-asyncio",
-    "ruff>=0.14.6",
-    "typer>=0.24.1",
+    "ruff",
+    "typer",
 ]
 
 [project.urls]
@@ -62,6 +68,9 @@ known-first-party = ["groundmark"]
 [tool.ruff.lint.per-file-ignores]
 "src/groundmark/markdown.py" = [
     "RUF001",  # ambiguous unicode — intentional in LLM prompt about preserving unicode symbols
+]
+"src/groundmark/pdf_chars.py" = [
+    "PLR2004",  # surrogate pair range constants (0xD800 etc.) are well-known Unicode values
 ]
 "tests/*" = [
     "ARG001",   # unused function arguments (mock.patch positional injection).
