@@ -158,12 +158,18 @@ def build_char_index(chars: list[Char]) -> CharIndex:
     return CharIndex("".join(parts), flat_to_char)
 
 
-def bbox_from_chars(chars: list[Char], page_width: float, page_height: float) -> BBox:
+def bbox_from_chars(
+    chars: list[Char],
+    page_width: float,
+    page_height: float,
+    origin_x: float = 0.0,
+    origin_y: float = 0.0,
+) -> BBox:
     """Convert a list of characters to a single BBox in 0-1000 normalized coordinates."""
-    x0 = min(c.x0 for c in chars)
-    y0 = min(c.y0 for c in chars)
-    x1 = max(c.x1 for c in chars)
-    y1 = max(c.y1 for c in chars)
+    x0 = min(c.x0 for c in chars) - origin_x
+    y0 = min(c.y0 for c in chars) - origin_y
+    x1 = max(c.x1 for c in chars) - origin_x
+    y1 = max(c.y1 for c in chars) - origin_y
     top = round((1.0 - y1 / page_height) * 1000)
     left = round(x0 / page_width * 1000)
     bottom = round((1.0 - y0 / page_height) * 1000)
@@ -171,7 +177,13 @@ def bbox_from_chars(chars: list[Char], page_width: float, page_height: float) ->
     return BBox(top=top, left=left, bottom=bottom, right=right)
 
 
-def line_bboxes(chars: list[Char], page_width: float, page_height: float) -> list[BBox]:
+def line_bboxes(
+    chars: list[Char],
+    page_width: float,
+    page_height: float,
+    origin_x: float = 0.0,
+    origin_y: float = 0.0,
+) -> list[BBox]:
     """Return one BBox per visual line of characters.
 
     Characters are sorted top-to-bottom by y-midpoint and grouped into lines
@@ -200,4 +212,4 @@ def line_bboxes(chars: list[Char], page_width: float, page_height: float) -> lis
             band_y0 = ch.y0
             band_y1 = ch.y1
 
-    return [bbox_from_chars(cluster, page_width, page_height) for cluster in clusters]
+    return [bbox_from_chars(cluster, page_width, page_height, origin_x, origin_y) for cluster in clusters]

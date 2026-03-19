@@ -6,6 +6,7 @@ from groundmark import BBox, DocumentIndex
 
 DATA_DIR = Path(__file__).parent / "data"
 TWO_PAGES_PDF = (DATA_DIR / "two_pages.pdf").read_bytes()
+OFFSET_MEDIABOX_PDF = (DATA_DIR / "offset_mediabox.pdf").read_bytes()
 
 
 class TestDocumentIndex:
@@ -73,3 +74,10 @@ class TestDocumentIndex:
             gap_extend=-1,
         )
         assert len(result["first page of the test document"]) >= 1
+
+    def test_resolve_offset_mediabox(self) -> None:
+        """BBox coordinates account for non-zero MediaBox origin."""
+        normal = DocumentIndex(TWO_PAGES_PDF)
+        offset = DocumentIndex(OFFSET_MEDIABOX_PDF)
+        quote = "screening using Covidence software"
+        assert normal.resolve([quote]) == offset.resolve([quote])

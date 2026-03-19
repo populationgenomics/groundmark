@@ -69,12 +69,14 @@ def _build_norm_to_flat(flat_str: str) -> list[int]:
 class _PageData:
     """Per-page extracted character data and dimensions."""
 
-    __slots__ = ("chars", "height", "width")
+    __slots__ = ("chars", "height", "origin_x", "origin_y", "width")
 
-    def __init__(self, chars: list[Char], width: float, height: float) -> None:
+    def __init__(self, chars: list[Char], width: float, height: float, origin_x: float, origin_y: float) -> None:
         self.chars = chars
         self.width = width
         self.height = height
+        self.origin_x = origin_x
+        self.origin_y = origin_y
 
 
 class DocumentIndex:
@@ -104,7 +106,8 @@ class DocumentIndex:
             page = doc[page_idx]
             chars = extract_page_chars(page)
             ci = build_char_index(chars)
-            self._pages.append(_PageData(chars, page.get_width(), page.get_height()))
+            mb = page.get_mediabox()
+            self._pages.append(_PageData(chars, page.get_width(), page.get_height(), mb[0], mb[1]))
 
             if flat_parts:
                 # Space separator between pages (prevents cross-page token merging).
@@ -180,7 +183,7 @@ class DocumentIndex:
         results: list[tuple[int, BBox]] = []
         for page_idx in sorted(all_page_chars):
             pd = self._pages[page_idx]
-            boxes = line_bboxes(all_page_chars[page_idx], pd.width, pd.height)
+            boxes = line_bboxes(all_page_chars[page_idx], pd.width, pd.height, pd.origin_x, pd.origin_y)
             results.extend((page_idx + 1, box) for box in boxes)
 
         return results
