@@ -11,7 +11,7 @@ DATA_DIR = Path(__file__).parent / "data"
 TWO_PAGES_PDF = (DATA_DIR / "two_pages.pdf").read_bytes()
 
 
-@patch("groundmark.markdown.PydanticAIMarkdownProvider.generate_markdown", new_callable=AsyncMock)
+@patch("groundmark.convert._generate_markdown", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_convert_single_chunk(mock_generate_md: AsyncMock) -> None:
     mock_generate_md.return_value = "# Hello\n\nSome text"
@@ -24,7 +24,7 @@ async def test_convert_single_chunk(mock_generate_md: AsyncMock) -> None:
     mock_generate_md.assert_called_once()
 
 
-@patch("groundmark.markdown.PydanticAIMarkdownProvider.generate_markdown", new_callable=AsyncMock)
+@patch("groundmark.convert._generate_markdown", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_convert_multi_chunk(mock_generate_md: AsyncMock) -> None:
     mock_generate_md.side_effect = ["# Page 1", "# Page 2"]
