@@ -6,7 +6,6 @@ bounding boxes via pypdfium2, then uses Smith-Waterman local-global alignment
 corresponding bounding boxes.
 """
 
-import logging
 import string
 from collections.abc import Sequence
 
@@ -17,35 +16,22 @@ import seq_smith
 from .pdf_chars import Char, build_char_index, extract_page_chars, line_bboxes
 from .types import BBox
 
-logger = logging.getLogger(__name__)
+# Default alignment weights (anchorite-style integers for seq_smith).
+DEFAULT_MATCH = 1
+DEFAULT_MISMATCH = -1
+DEFAULT_GAP_OPEN = -2
+DEFAULT_GAP_EXTEND = -2
 
-# Default alignment weights (cur-ai-ss-style, scaled x20 for seq_smith integer compatibility).
-# match=+1, mismatch=-0.5, gap_open=-2.5, gap_extend=-0.05  →  x20  →  20, -10, -50, -1
-DEFAULT_MATCH = 20
-DEFAULT_MISMATCH = -10
-DEFAULT_GAP_OPEN = -50
-DEFAULT_GAP_EXTEND = -1
-
-# Minimum alignment score to accept a match (≈15 matched chars x 20).
-_MIN_ALIGNMENT_SCORE = 300
-# Coverage thresholds (fraction of normalized quote that must be matched).
-_WARN_COVERAGE = 0.5
-_FAIL_COVERAGE = 0.3
-# Maximum iterations for mask-and-realign (handles split/multi-region quotes).
-_MAX_ITERATIONS = 10
+# Minimum alignment score to accept a match (≈15 matched chars).
+_MIN_ALIGNMENT_SCORE = 15
 
 # Normalization alphabet for seq_smith encoding.
-_MASK_CHAR = "#"
-_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " " + _MASK_CHAR
+_ALIGN_ALPHABET = string.ascii_lowercase + string.digits + " "
 
 
 def _build_score_matrix(match: int, mismatch: int) -> np.ndarray:
-    """Build a score matrix with mask-char support."""
-    sm = seq_smith.make_score_matrix(_ALIGN_ALPHABET, match, mismatch)
-    mask_byte = seq_smith.encode(_MASK_CHAR, _ALIGN_ALPHABET)[0]
-    sm[mask_byte, :] = -100
-    sm[:, mask_byte] = -100
-    return sm
+    """Build a score matrix for alignment."""
+    return seq_smith.make_score_matrix(_ALIGN_ALPHABET, match, mismatch)
 
 
 def _normalize(text: str) -> bytes:
@@ -159,7 +145,7 @@ class DocumentIndex:
         gap_extend: int,
         quote: str,
     ) -> list[tuple[int, BBox]]:
-        """Resolve a single quote using iterative mask-and-realign."""
+        """Resolve a single quote via local-global Smith-Waterman alignment."""
         clean_quote = quote.strip()
         if not clean_quote:
             return []
@@ -168,59 +154,24 @@ class DocumentIndex:
         if not norm_quote:
             return []
 
-        mask_byte = seq_smith.encode(_MASK_CHAR, _ALIGN_ALPHABET)[0]
-        current_norm = bytearray(self._flat_norm)
-        total_len = len(norm_quote)
-        matched_len = 0
+        aln = seq_smith.local_global_align(
+            self._flat_norm,
+            norm_quote,
+            score_matrix,
+            gap_open,
+            gap_extend,
+        )
+        if aln.score < _MIN_ALIGNMENT_SCORE:
+            return []
+
+        # Collect matched characters grouped by page.
         all_page_chars: dict[int, list[Char]] = {}
-
-        for _ in range(_MAX_ITERATIONS):
-            aln = seq_smith.local_global_align(
-                bytes(current_norm),
-                norm_quote,
-                score_matrix,
-                gap_open,
-                gap_extend,
-            )
-            if aln.score < _MIN_ALIGNMENT_SCORE:
-                break
-
-            iteration_matched = 0
-            for frag in aln.fragments:
-                if frag.fragment_type == seq_smith.FragmentType.Match:
-                    # Mask consumed portion of document to prevent re-matching.
-                    for j in range(frag.sa_start, frag.sa_start + frag.len):
-                        current_norm[j] = mask_byte
-
-                    # Map normalized positions back to flat-string positions.
-                    flat_start = self._norm_to_flat[frag.sa_start]
-                    flat_end = self._norm_to_flat[frag.sa_start + frag.len]
-
-                    # Collect matched characters grouped by page.
-                    for page_idx, chars in self._chars_for_flat_range(flat_start, flat_end).items():
-                        all_page_chars.setdefault(page_idx, []).extend(chars)
-
-                    iteration_matched += frag.len
-                elif frag.fragment_type == seq_smith.FragmentType.AGap:
-                    # Document gap — mask to avoid re-matching but don't collect chars.
-                    for j in range(frag.sa_start, frag.sa_start + frag.len):
-                        current_norm[j] = mask_byte
-                    iteration_matched += frag.len
-
-            if iteration_matched == 0:
-                break
-            matched_len += iteration_matched
-
-        # Coverage check.
-        if total_len > 0 and matched_len < total_len * _WARN_COVERAGE:
-            logger.warning(
-                "Low coverage for quote alignment: %d/%d for quote '%s'",
-                matched_len,
-                total_len,
-                quote,
-            )
-            if matched_len < total_len * _FAIL_COVERAGE:
-                return []
+        for frag in aln.fragments:
+            if frag.fragment_type == seq_smith.FragmentType.Match:
+                flat_start = self._norm_to_flat[frag.sa_start]
+                flat_end = self._norm_to_flat[frag.sa_start + frag.len]
+                for page_idx, chars in self._chars_for_flat_range(flat_start, flat_end).items():
+                    all_page_chars.setdefault(page_idx, []).extend(chars)
 
         # Convert collected characters to line-level bounding boxes.
         # page_idx is 0-based (array index), but the public API returns
@@ -251,10 +202,10 @@ class DocumentIndex:
 
         Args:
             quotes: Verbatim strings to locate in the PDF.
-            match: Score for matching characters (default 20, i.e. +1.0 scaled x20).
-            mismatch: Score for mismatching characters (default -10, i.e. -0.5 scaled x20).
-            gap_open: Penalty for opening a gap (default -50, i.e. -2.5 scaled x20).
-            gap_extend: Penalty for extending a gap (default -1, i.e. -0.05 scaled x20).
+            match: Score for matching characters.
+            mismatch: Score for mismatching characters.
+            gap_open: Penalty for opening a gap.
+            gap_extend: Penalty for extending a gap.
 
         Returns:
             Mapping of quote string → list of ``(page, BBox)`` tuples. Pages are
