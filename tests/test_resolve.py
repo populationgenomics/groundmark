@@ -21,7 +21,7 @@ class TestDocumentIndex:
         locs = result["multiple sentences for alignment testing"]
         assert len(locs) >= 1
         page, bbox = locs[0]
-        assert page == 0
+        assert page == 1
         assert isinstance(bbox, BBox)
         assert 0 <= bbox.top < bbox.bottom <= 1000
         assert 0 <= bbox.left < bbox.right <= 1000
@@ -31,7 +31,7 @@ class TestDocumentIndex:
         result = doc.resolve(["screening using Covidence software"])
         locs = result["screening using Covidence software"]
         assert len(locs) >= 1
-        assert locs[0][0] == 1  # page 1 (0-indexed)
+        assert locs[0][0] == 2  # second page
 
     def test_resolve_batch(self) -> None:
         doc = DocumentIndex(TWO_PAGES_PDF)
@@ -43,9 +43,9 @@ class TestDocumentIndex:
         assert len(result) == 2
         for q in quotes:
             assert len(result[q]) >= 1
-        # First quote on page 0, second on page 1.
-        assert result[quotes[0]][0][0] == 0
-        assert result[quotes[1]][0][0] == 1
+        # First quote on page 1, second on page 2.
+        assert result[quotes[0]][0][0] == 1
+        assert result[quotes[1]][0][0] == 2
 
     def test_resolve_no_match(self) -> None:
         doc = DocumentIndex(TWO_PAGES_PDF)

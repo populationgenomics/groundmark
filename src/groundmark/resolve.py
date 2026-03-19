@@ -223,11 +223,14 @@ class DocumentIndex:
                 return []
 
         # Convert collected characters to line-level bounding boxes.
+        # page_idx is 0-based (array index), but the public API returns
+        # 1-based page numbers to match PDF conventions (PDF spec, pdf.js,
+        # react-pdf all use 1-based pages).
         results: list[tuple[int, BBox]] = []
         for page_idx in sorted(all_page_chars):
             pd = self._pages[page_idx]
             boxes = line_bboxes(all_page_chars[page_idx], pd.width, pd.height)
-            results.extend((page_idx, box) for box in boxes)
+            results.extend((page_idx + 1, box) for box in boxes)
 
         return results
 
@@ -255,8 +258,8 @@ class DocumentIndex:
 
         Returns:
             Mapping of quote string → list of ``(page, BBox)`` tuples. Pages are
-            0-indexed. Quotes that cannot be matched with sufficient confidence
-            return an empty list.
+            1-indexed (first page is 1). Quotes that cannot be matched with
+            sufficient confidence return an empty list.
         """
         if not quotes or not self._flat_str:
             return {q: [] for q in quotes}
