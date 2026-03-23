@@ -75,6 +75,35 @@ class TestDocumentIndex:
         )
         assert len(result["first page of the test document"]) >= 1
 
+    def test_resolve_batch_with_blank_quotes(self) -> None:
+        """Blank/whitespace-only quotes return [] without breaking valid ones."""
+        doc = DocumentIndex(TWO_PAGES_PDF)
+        quotes = [
+            "first page of the test document",
+            "",
+            "   ",
+            "screening using Covidence software",
+        ]
+        result = doc.resolve(quotes)
+        assert len(result) == 4
+        assert result[""] == []
+        assert result["   "] == []
+        assert len(result[quotes[0]]) >= 1
+        assert result[quotes[0]][0][0] == 1
+        assert len(result[quotes[3]]) >= 1
+        assert result[quotes[3]][0][0] == 2
+
+    def test_resolve_num_threads(self) -> None:
+        """Explicit num_threads does not change results."""
+        doc = DocumentIndex(TWO_PAGES_PDF)
+        quotes = [
+            "first page of the test document",
+            "screening using Covidence software",
+        ]
+        default_result = doc.resolve(quotes)
+        threaded_result = doc.resolve(quotes, num_threads=2)
+        assert default_result == threaded_result
+
     def test_resolve_offset_mediabox(self) -> None:
         """BBox coordinates account for non-zero MediaBox origin."""
         normal = DocumentIndex(TWO_PAGES_PDF)

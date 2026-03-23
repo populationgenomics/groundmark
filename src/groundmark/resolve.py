@@ -141,29 +141,8 @@ class DocumentIndex:
                 page_chars.setdefault(page_idx, []).append(pd.chars[char_idx])
         return page_chars
 
-    def _resolve_single(
-        self,
-        score_matrix: np.ndarray,
-        gap_open: int,
-        gap_extend: int,
-        quote: str,
-    ) -> list[tuple[int, BBox]]:
-        """Resolve a single quote via local-global Smith-Waterman alignment."""
-        clean_quote = quote.strip()
-        if not clean_quote:
-            return []
-
-        norm_quote = _normalize(clean_quote)
-        if not norm_quote:
-            return []
-
-        aln = seq_smith.local_global_align(
-            self._flat_norm,
-            norm_quote,
-            score_matrix,
-            gap_open,
-            gap_extend,
-        )
+    def _bboxes_from_alignment(self, aln: seq_smith.Alignment) -> list[tuple[int, BBox]]:
+        """Convert an alignment result to page-grouped bounding boxes."""
         if aln.score < _MIN_ALIGNMENT_SCORE:
             return []
 
@@ -196,6 +175,7 @@ class DocumentIndex:
         mismatch: int = DEFAULT_MISMATCH,
         gap_open: int = DEFAULT_GAP_OPEN,
         gap_extend: int = DEFAULT_GAP_EXTEND,
+        num_threads: int | None = None,
     ) -> dict[str, list[tuple[int, BBox]]]:
         """Resolve verbatim quotes to bounding boxes.
 
@@ -209,6 +189,8 @@ class DocumentIndex:
             mismatch: Score for mismatching characters.
             gap_open: Penalty for opening a gap.
             gap_extend: Penalty for extending a gap.
+            num_threads: Thread count for batch alignment. ``None`` lets
+                seq_smith choose a default.
 
         Returns:
             Mapping of quote string → list of ``(page, BBox)`` tuples. Pages are
@@ -220,4 +202,33 @@ class DocumentIndex:
 
         score_matrix = _build_score_matrix(match, mismatch)
 
-        return {quote: self._resolve_single(score_matrix, gap_open, gap_extend, quote) for quote in quotes}
+        # Normalize all quotes upfront, tracking which are non-empty.
+        norm_quotes: list[bytes] = []
+        quote_indices: list[int] = []  # index into *quotes* for each norm entry
+        for i, quote in enumerate(quotes):
+            clean = quote.strip()
+            if not clean:
+                continue
+            nq = _normalize(clean)
+            if nq:
+                norm_quotes.append(nq)
+                quote_indices.append(i)
+
+        results: dict[str, list[tuple[int, BBox]]] = {q: [] for q in quotes}
+
+        if not norm_quotes:
+            return results
+
+        alignments = seq_smith.local_global_align_many(
+            self._flat_norm,
+            norm_quotes,
+            score_matrix,
+            gap_open,
+            gap_extend,
+            num_threads=num_threads,
+        )
+
+        for idx, aln in zip(quote_indices, alignments, strict=True):
+            results[quotes[idx]] = self._bboxes_from_alignment(aln)
+
+        return results
