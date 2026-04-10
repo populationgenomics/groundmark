@@ -1,6 +1,6 @@
 """Tests for PDF→Markdown generation (line-number stripping, NFKC normalization)."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -11,6 +11,7 @@ from groundmark.convert import _agent, _generate_markdown
 @pytest.mark.asyncio
 async def test_calls_agent_with_chunk_data(mock_run: AsyncMock) -> None:
     mock_run.return_value.output = "1|# Hello\n2|\n3|Some text"
+    mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
     result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
 
@@ -22,17 +23,18 @@ async def test_calls_agent_with_chunk_data(mock_run: AsyncMock) -> None:
     assert call_args[1]["model"] == "anthropic:claude-opus-4-6"
 
     # Line-number prefixes should be stripped.
-    assert result == "# Hello\n\nSome text"
+    assert result.markdown == "# Hello\n\nSome text"
 
 
 @patch.object(_agent, "run", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_strips_line_numbers(mock_run: AsyncMock) -> None:
     mock_run.return_value.output = "1|First line\n2|Second line\n3|\n4|Fourth"
+    mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
     result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
 
-    assert result == "First line\nSecond line\n\nFourth"
+    assert result.markdown == "First line\nSecond line\n\nFourth"
 
 
 @patch.object(_agent, "run", new_callable=AsyncMock)
@@ -40,7 +42,8 @@ async def test_strips_line_numbers(mock_run: AsyncMock) -> None:
 async def test_nfkc_normalizes_output(mock_run: AsyncMock) -> None:
     # Superscript digits and ligatures should be decomposed to ASCII equivalents.
     mock_run.return_value.output = "1|overlap with NS\u00b9\u2070\u00b7\u00b9\u00b9 and \ufb01ndings"
+    mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
     result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
 
-    assert result == "overlap with NS10\u00b711 and findings"
+    assert result.markdown == "overlap with NS10\u00b711 and findings"

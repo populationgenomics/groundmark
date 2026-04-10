@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "groundmark"
-version = "0.3.6"
+version = "0.4.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
@@ -34,6 +34,7 @@ openai = ["pydantic-ai-slim[openai]"]
 
 [dependency-groups]
 dev = [
+    "mypy",
     "pre-commit",
     "pytest",
     "pytest-asyncio",
@@ -81,3 +82,7 @@ known-first-party = ["groundmark"]
 
 [tool.mypy]
 python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pypdfium2.*"]
+ignore_missing_imports = true

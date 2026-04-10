@@ -3,9 +3,11 @@
 import asyncio
 import collections
 import dataclasses
+import json
 import re
 import unicodedata
 from collections.abc import Sequence
+from typing import Any
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import BinaryContent
@@ -100,7 +102,13 @@ def _renumber_markers(markdown_chunks: Sequence[str]) -> list[str]:
     return [re.sub(r"<!--(table|figure)-->", _renumber, chunk) for chunk in markdown_chunks]
 
 
-async def _generate_markdown(chunk_bytes: bytes, model: str, prompt: str) -> str:
+@dataclasses.dataclass(frozen=True)
+class _ChunkResult:
+    markdown: str
+    all_messages: list[dict[str, Any]]
+
+
+async def _generate_markdown(chunk_bytes: bytes, model: str, prompt: str) -> _ChunkResult:
     """Convert a single PDF chunk to Markdown via a vision-capable LLM."""
     result = await _agent.run(
         [BinaryContent(data=chunk_bytes, media_type="application/pdf"), prompt],
@@ -110,7 +118,11 @@ async def _generate_markdown(chunk_bytes: bytes, model: str, prompt: str) -> str
     markdown = _LINE_NUM_RE.sub("", result.output)
     # NFKC-normalize so superscript digits, ligatures, etc. match the
     # normalized character text extracted from PDFs by pypdfium2.
-    return unicodedata.normalize("NFKC", markdown)
+    all_messages: list[dict[str, Any]] = json.loads(result.all_messages_json())
+    return _ChunkResult(
+        markdown=unicodedata.normalize("NFKC", markdown),
+        all_messages=all_messages,
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -131,6 +143,8 @@ class ConvertResult:
 
     markdown: str
     """Plain Markdown with ``<!--page-->`` markers between pages."""
+    all_messages: list[list[dict[str, Any]]]
+    """LLM conversation traces per chunk (requests, responses, usage)."""
 
 
 async def convert(
@@ -154,13 +168,16 @@ async def convert(
         ConvertResult with the generated Markdown.
     """
     if markdown is not None:
-        return ConvertResult(markdown=markdown)
+        return ConvertResult(markdown=markdown, all_messages=[])
 
     prompt = config.prompt or PROMPT
     doc_chunks = list(chunks(pdf_bytes, page_count=config.page_count))
 
     coros = [_generate_markdown(chunk_bytes, config.model, prompt) for chunk_bytes, _, _ in doc_chunks]
-    markdown_chunks = list(await asyncio.gather(*coros))
+    chunk_results = list(await asyncio.gather(*coros))
 
-    numbered = _renumber_markers(markdown_chunks)
-    return ConvertResult(markdown="\n\n<!--page-->\n\n".join(numbered))
+    numbered = _renumber_markers([cr.markdown for cr in chunk_results])
+    return ConvertResult(
+        markdown="\n\n<!--page-->\n\n".join(numbered),
+        all_messages=[cr.all_messages for cr in chunk_results],
+    )
