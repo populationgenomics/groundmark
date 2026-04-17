@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "groundmark"
-version = "0.4.0"
+version = "0.5.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
@@ -27,10 +27,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-anthropic = ["pydantic-ai-slim[anthropic]"]
-bedrock = ["pydantic-ai-slim[bedrock]"]
-google = ["pydantic-ai-slim[google]"]
-openai = ["pydantic-ai-slim[openai]"]
+# Require >=1.70.0 for `BedrockModelSettings.bedrock_inference_profile` (PR #4697),
+# used by `convert.py` to plumb cost-attribution ARNs without losing model identity.
+anthropic = ["pydantic-ai-slim[anthropic]>=1.70.0"]
+bedrock = ["pydantic-ai-slim[bedrock]>=1.70.0"]
+google = ["pydantic-ai-slim[google]>=1.70.0"]
+openai = ["pydantic-ai-slim[openai]>=1.70.0"]
 
 [dependency-groups]
 dev = [

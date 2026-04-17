@@ -4,7 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from groundmark.convert import _agent, _generate_markdown
+from groundmark.convert import ModelConfig, _agent, _generate_markdown
+
+MODEL = ModelConfig(name="anthropic:claude-opus-4-6")
 
 
 @patch.object(_agent, "run", new_callable=AsyncMock)
@@ -13,7 +15,7 @@ async def test_calls_agent_with_chunk_data(mock_run: AsyncMock) -> None:
     mock_run.return_value.output = "1|# Hello\n2|\n3|Some text"
     mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
-    result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
+    result = await _generate_markdown(b"fake-pdf-bytes", MODEL, "test prompt")
 
     mock_run.assert_called_once()
     call_args = mock_run.call_args
@@ -32,7 +34,7 @@ async def test_strips_line_numbers(mock_run: AsyncMock) -> None:
     mock_run.return_value.output = "1|First line\n2|Second line\n3|\n4|Fourth"
     mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
-    result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
+    result = await _generate_markdown(b"fake-pdf-bytes", MODEL, "test prompt")
 
     assert result.markdown == "First line\nSecond line\n\nFourth"
 
@@ -44,6 +46,6 @@ async def test_nfkc_normalizes_output(mock_run: AsyncMock) -> None:
     mock_run.return_value.output = "1|overlap with NS\u00b9\u2070\u00b7\u00b9\u00b9 and \ufb01ndings"
     mock_run.return_value.all_messages_json = MagicMock(return_value=b"[]")
 
-    result = await _generate_markdown(b"fake-pdf-bytes", "anthropic:claude-opus-4-6", "test prompt")
+    result = await _generate_markdown(b"fake-pdf-bytes", MODEL, "test prompt")
 
     assert result.markdown == "overlap with NS10\u00b711 and findings"

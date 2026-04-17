@@ -9,10 +9,36 @@ import unicodedata
 from collections.abc import Sequence
 from typing import Any
 
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.messages import BinaryContent
+from pydantic_ai.settings import ModelSettings
 
 from .document import chunks
+
+
+class ModelConfig(BaseModel):
+    """LLM model configuration with optional provider-specific extras."""
+
+    name: str
+    """Pydantic AI model string, e.g. ``bedrock:au.anthropic.claude-sonnet-4-6``."""
+
+    bedrock_inference_profile: str | None = None
+    """Bedrock application inference profile ARN. When set, sent as the wire-level
+    ``modelId`` for cost attribution; ``name`` is used to resolve the per-model profile."""
+
+
+def _model_settings(config: ModelConfig) -> ModelSettings | None:
+    """Build provider-specific ModelSettings from a ModelConfig."""
+    if config.bedrock_inference_profile:
+        # Inline import: ``pydantic_ai.models.bedrock`` requires boto3 (only present
+        # under the [bedrock] extra). Importing it at module top would break installs
+        # that picked a different provider extra.
+        from pydantic_ai.models.bedrock import BedrockModelSettings  # noqa: PLC0415
+
+        return BedrockModelSettings(bedrock_inference_profile=config.bedrock_inference_profile)
+    return None
+
 
 # Apparently, faithfully analyzing a PDF's complicated layout and transcribing
 # it into well-structured Markdown isn't creative enough for Claude's content
@@ -108,11 +134,12 @@ class _ChunkResult:
     all_messages: list[dict[str, Any]]
 
 
-async def _generate_markdown(chunk_bytes: bytes, model: str, prompt: str) -> _ChunkResult:
+async def _generate_markdown(chunk_bytes: bytes, model: ModelConfig, prompt: str) -> _ChunkResult:
     """Convert a single PDF chunk to Markdown via a vision-capable LLM."""
     result = await _agent.run(
         [BinaryContent(data=chunk_bytes, media_type="application/pdf"), prompt],
-        model=model,
+        model=model.name,
+        model_settings=_model_settings(model),
     )
     # Strip the line-number prefixes added to bypass Claude's content filter.
     markdown = _LINE_NUM_RE.sub("", result.output)
@@ -129,8 +156,8 @@ async def _generate_markdown(chunk_bytes: bytes, model: str, prompt: str) -> _Ch
 class Config:
     """Configuration for PDF→Markdown conversion."""
 
-    model: str
-    """Pydantic AI model string (e.g. "bedrock:au.anthropic.claude-sonnet-4-6")."""
+    model: ModelConfig
+    """LLM model configuration (model name + optional provider-specific extras)."""
     page_count: int | None = None
     """Pages per chunk (None = whole PDF in one chunk)."""
     prompt: str | None = None
