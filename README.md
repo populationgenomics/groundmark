@@ -14,13 +14,14 @@ PDF to Markdown conversion and quote-to-bbox resolution.
 ```python
 import asyncio
 from groundmark import DocumentIndex
-from groundmark.convert import Config, convert
+from groundmark.convert import Config, ModelConfig, convert
 
 async def main():
     pdf_bytes = open("document.pdf", "rb").read()
 
     # PDF -> Markdown (requires pydantic-ai, install with e.g. groundmark[bedrock])
-    result = await convert(pdf_bytes, Config(model="bedrock:au.anthropic.claude-sonnet-4-6"))
+    model = ModelConfig(name="bedrock:au.anthropic.claude-sonnet-4-6")
+    result = await convert(pdf_bytes, Config(model=model))
     print(result.markdown[:500])
 
     # Resolve verbatim quotes to PDF bounding boxes
