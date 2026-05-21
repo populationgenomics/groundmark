@@ -4,15 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "groundmark"
-version = "0.5.1"
+version = "0.6.0"
 authors = [
     { name = "Tobias Sargeant", email = "tobias.sargeant@gmail.com" },
 ]
-description = "PDF to Markdown conversion and quote-to-bbox resolution"
+description = "DEPRECATED: superseded by anchorite (https://github.com/populationgenomics/anchorite) >= 0.4.0"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 classifiers = [
+    "Development Status :: 7 - Inactive",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

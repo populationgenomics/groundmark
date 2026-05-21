@@ -1,5 +1,18 @@
 # groundmark
 
+> [!WARNING]
+> **groundmark is deprecated and this repository is being archived.**
+>
+> Its citation-resolution API has been subsumed by
+> [**anchorite**](https://github.com/populationgenomics/anchorite) **>= 0.4.0**,
+> which exposes a very similar API. Note that anchorite is not batteries-included:
+> the PDF-to-Markdown / `pydantic-ai` layer is left to the caller. See
+> [flowa](https://github.com/populationgenomics/flowa) for an example client that
+> wires this together.
+>
+> No further releases of `groundmark` will be made on PyPI. Existing versions
+> remain installable, but importing `groundmark` will emit a `DeprecationWarning`.
+
 <img src="https://raw.githubusercontent.com/populationgenomics/groundmark/main/groundmark.webp" alt="groundmark" width="200">
 
 PDF to Markdown conversion and quote-to-bbox resolution.
